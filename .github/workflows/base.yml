@@ -8,30 +8,33 @@ on:
 
 
 jobs:
-  linting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+  # linting:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: actions/setup-python@v2
 
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip
-          restore-keys: ${{ runner.os }}-pip
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: ~/.cache/pip
+  #         key: ${{ runner.os }}-pip
+  #         restore-keys: ${{ runner.os }}-pip
       
-      - run: python -m pip install black flake8 isort
-      - run: |
-          flake8 .
-          black . --check
-          isort .
+  #     - run: python -m pip install black flake8 isort
+  #     - run: |
+  #         flake8 .
+  #         black . --check
+  #         isort .
+
   test:
-    needs: linting
+    # needs: linting
+
     strategy:
       fail-fast: true
       matrix:
         os: [ "ubuntu-latest", "macos-latest" ]
         python-version: [ "3.6", "3.7", "3.8", "3.9" ]
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
