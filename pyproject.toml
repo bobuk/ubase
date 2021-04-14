@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ubase"
-version = "0.1.0"
+version = "0.1.2"
 description = "μBase is oversimpistic key-value database wrapper on top of aiosqlite"
 authors = ["Grigory Bakunov <thebobuk@ya.ru>"]
 license = "The Unlicense"

@@ -102,3 +102,20 @@ async def test_base_keys_proxy():
     assert len(res) == 3
     assert res[1] == 4
     await db.close()
+
+
+@pytest.mark.asyncio
+async def test_base_andnot_del():
+    import ubase
+
+    db = await ubase.init_db(":memory:")
+    await db.area.put("test", "pass")
+    assert await db.area.get("test", None) == "pass"
+    await db.area.delete("test")
+    assert await db.area.get("test", None) == None
+
+    await db.area.put("test", "pass")
+    await db.delete(f"area:test")
+    assert await db.area.get("test", None) == None
+
+    await db.close()

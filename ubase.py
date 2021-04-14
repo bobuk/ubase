@@ -50,6 +50,9 @@ class uBaseProxy:
     async def put(self, key: KeyType, data: ValueType):
         return await self.base.put(f"{self.mask}:{key}", data)
 
+    async def delete(self, key: KeyType):
+        return await self.base.delete(f"{self.mask}:{key}")
+
     def keys(
         self, op: Union[OP, str], key: KeyType, limit: int = -1
     ) -> AsyncGenerator[Tuple[KeyType, ValueType], None]:
@@ -93,6 +96,11 @@ class uBase:
             + "ON CONFLICT(id) DO UPDATE SET data=?",
             (key, dt, dt),
         )
+
+    async def delete(self, key: KeyType):
+        if not self.db:
+            raise NotInitialized
+        await self.db.execute("DELETE FROM kvbase WHERE id=?", (key,))
 
     async def keys(
         self,
