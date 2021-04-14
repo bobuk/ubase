@@ -112,10 +112,10 @@ async def test_base_andnot_del():
     await db.area.put("test", "pass")
     assert await db.area.get("test", None) == "pass"
     await db.area.delete("test")
-    assert await db.area.get("test", None) == None
+    assert await db.area.get("test", None) is None
 
     await db.area.put("test", "pass")
-    await db.delete(f"area:test")
-    assert await db.area.get("test", None) == None
+    await db.delete("area:test")
+    assert await db.area.get("test", None) is None
 
     await db.close()
