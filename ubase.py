@@ -124,7 +124,6 @@ class uBase:
             + f"(id {operator} '{key}') and (id LIKE '{mask}%')"
             + f"order by id {order} limit {limit}"
         )
-        print(req)
         async with self.db.execute(req) as cursor:
             async for key, item in cursor:
                 yield key, json.loads(item) if type(item) == "str" else item
