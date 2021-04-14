@@ -33,6 +33,8 @@ Method `init_db` has two parameters:
  - `key`: string or integer
  - `value`: must be any serializable data type, like `int`, `str`, `dict` or `list` of these types accordingly.
  
+ `uBase.delete` is obviously to delete unneded data from database. The only argument is the `key`.
+ 
  Normally you will want slightly more structured keys, just use colon-separated strings, like "user:bobuk" for example.
  To add some sugar to these combinations we have `uBase.<prefix>.<method>`.
  
