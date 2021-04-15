@@ -135,7 +135,7 @@ class uBase:
         await self.db.close()
 
 
-async def init_db(name: str, defaults: Dict[KeyType, ValueType] = {}) -> uBase:
+async def init_db(name: str, defaults: Dict[KeyType, ValueType] = {}, ignore_existing = True) -> uBase:
     DB = uBase(name)
     DB.db = await aiosqlite.connect(name, isolation_level=None)
     try:
@@ -143,7 +143,8 @@ async def init_db(name: str, defaults: Dict[KeyType, ValueType] = {}) -> uBase:
             "CREATE TABLE kvbase " + "(id varchar(32) PRIMARY KEY UNIQUE, data json)"
         )
     except aiosqlite.OperationalError:
-        raise CantCreateDatabase
+        if not ignore_existing:
+            raise CantCreateDatabase
     for k, v in defaults.items():
         if not await DB.get(k):
             await DB.put(k, v)

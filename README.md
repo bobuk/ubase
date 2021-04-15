@@ -21,9 +21,10 @@ not a value
 
 ```
 
-Method `init_db` has two parameters:
+Method `init_db` has two main parameters:
  - `filename`: full database filename. You can use `:memory:` for an in-memory database, as always with sqlite3.
  - `defaults`: dictionary with default values which must be prefilled in newly created database. Note that default values will not be rewritten if keys were already created in the database before.
+ - `ignore_existing`: don't raise exception, if database is already exists. True by default.
  
  `uBase.get` is more or less equivalent of `dict.get`, two arguments:
  - `key`: must be string or integer.
