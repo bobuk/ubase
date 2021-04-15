@@ -135,7 +135,9 @@ class uBase:
         await self.db.close()
 
 
-async def init_db(name: str, defaults: Dict[KeyType, ValueType] = {}, ignore_existing = True) -> uBase:
+async def init_db(
+    name: str, defaults: Dict[KeyType, ValueType] = {}, ignore_existing=True
+) -> uBase:
     DB = uBase(name)
     DB.db = await aiosqlite.connect(name, isolation_level=None)
     try:
