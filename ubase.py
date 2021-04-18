@@ -27,6 +27,10 @@ class NotInitialized(Exception):
     pass
 
 
+class CantFoundKey(Exception):
+    pass
+
+
 class OP(Enum):
     GT = 1
     GTE = 2
@@ -54,9 +58,15 @@ class uBaseProxy:
         return await self.base.delete(f"{self.mask}:{key}")
 
     def keys(
-        self, op: Union[OP, str], key: KeyType, limit: int = -1
+        self,
+        op: Union[OP, str],
+        key: KeyType,
+        bytimestamp: bool = False,
+        limit: int = -1,
     ) -> AsyncGenerator[Tuple[KeyType, ValueType], None]:
-        return self.base.keys(op, f"{self.mask}:{key}", self.mask, limit)
+        return self.base.keys(
+            op, f"{self.mask}:{key}", self.mask, bytimestamp=bytimestamp, limit=limit
+        )
 
 
 class uBase:
@@ -107,6 +117,7 @@ class uBase:
         op: Union[OP, str],
         key: KeyType,
         mask: Optional[KeyType] = "",
+        bytimestamp=False,
         limit: int = -1,
     ) -> AsyncGenerator[Tuple[KeyType, ValueType], None]:
         if not self.db:
@@ -119,11 +130,27 @@ class uBase:
                 raise NoOperations
             operator = _OP_LIST[OP(op)]
         order = "desc" if "<" in operator else "asc"
-        req = (
-            "SELECT id, data FROM kvbase WHERE "
-            + f"(id {operator} '{key}') and (id LIKE '{mask}%')"
-            + f"order by id {order} limit {limit}"
-        )
+        start_from = None
+
+        async with self.db.execute(
+            "SELECT id, ts FROM kvbase WHERE id = ? LIMIT 1", (key,)
+        ) as cursor:
+            frm = await cursor.fetchone()
+            if frm:
+                start_from = frm
+
+        if not start_from:
+            raise CantFoundKey
+
+        req = "SELECT id, data FROM kvbase WHERE "
+        if bytimestamp:
+            req += f"(ts {operator} '{start_from[1]}')"
+            order_by = "ts"
+        else:
+            req += f"(id {operator} '{start_from[0]}')"
+            order_by = "id"
+
+        req += f" and (id like '{mask}%') order by {order_by} {order} limit {limit}"
         async with self.db.execute(req) as cursor:
             async for key, item in cursor:
                 yield key, json.loads(item) if type(item) == "str" else item
@@ -142,7 +169,8 @@ async def init_db(
     DB.db = await aiosqlite.connect(name, isolation_level=None)
     try:
         await DB.db.execute(
-            "CREATE TABLE kvbase " + "(id varchar(32) PRIMARY KEY UNIQUE, data json)"
+            "CREATE TABLE kvbase "
+            + "(id varchar(32) PRIMARY KEY UNIQUE, data json, ts int DEFAULT ((julianday('now') - 2440587.5)*86400000) NOT NULL)"
         )
     except aiosqlite.OperationalError:
         if not ignore_existing:

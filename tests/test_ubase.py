@@ -98,9 +98,37 @@ async def test_base_keys_proxy():
     res = []
     async for k, v in db.area.keys("<=", 5, limit=3):
         res.append(v)
-    print(res)
     assert len(res) == 3
     assert res[1] == 4
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_base_keys_ts_no_ts():
+    import ubase
+
+    db = await ubase.init_db(":memory:")
+    for i in range(5):
+        await asyncio.sleep(0.01)
+        await db.area.put(i, i)
+    for i in range(9, 4, -1):
+        await asyncio.sleep(0.01)
+        await db.area.put(i, i)
+    res = []
+    async for k, v in db.area.keys(">=", 0, bytimestamp=True):
+        res.append(v)
+    assert res == [0, 1, 2, 3, 4, 9, 8, 7, 6, 5]
+    res = []
+    async for k, v in db.area.keys("<=", 5, limit=3):
+        res.append(v)
+    assert len(res) == 3
+    assert res[1] == 4
+
+    res = []
+    async for k, v in db.area.keys("<=", 5, limit=3, bytimestamp=True):
+        res.append(v)
+    assert len(res) == 3
+    assert res == [5, 6, 7]
     await db.close()
 
 
