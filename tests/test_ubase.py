@@ -151,6 +151,13 @@ async def test_base_keys_features():
         res.append(v)
     assert res == [1, 3]
 
+    await db.area.put(1, 1, loaded=True)
+
+    res = []
+    async for k, v in db.area.select("loaded", True):
+        res.append(v)
+    assert res == [0, 1, 2, 4]
+
     await db.close()
 
 

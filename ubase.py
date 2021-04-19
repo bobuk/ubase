@@ -67,7 +67,7 @@ class uBaseProxy:
     ) -> Optional[ValueType]:
         return await self.base.get(f"{self.mask}:{key}", default)
 
-    async def put(self, key: KeyType, data: ValueType, **args):
+    async def put(self, key: KeyType, data: Optional[ValueType] = None, **args):
         return await self.base.put(f"{self.mask}:{key}", data, **args)
 
     async def delete(self, key: KeyType):
@@ -75,6 +75,14 @@ class uBaseProxy:
 
     async def features(self, key: KeyType) -> Optional[uBaseFeature]:
         return await self.base.features(f"{self.mask}:{key}")
+
+    def select(
+        self,
+        feature: str,
+        target: FeatureType,
+        limit: int = -1,
+    ) -> AsyncGenerator[Tuple[KeyType, ValueType], None]:
+        return self.base.select(feature, target, mask=f"{self.mask}:", limit=limit)
 
     def keys(
         self,
@@ -130,7 +138,7 @@ class uBase:
             return uBaseFeature(output)
         return None
 
-    async def put(self, key: KeyType, data: ValueType, **args):
+    async def put(self, key: KeyType, data: Optional[ValueType] = None, **args):
         if not self.db:
             raise NotInitialized
         dt = json.dumps(data)
@@ -155,11 +163,14 @@ class uBase:
                 set_kv += f", {k}={v}"
         else:
             ins_k = ins_v = set_kv = ""
-        await self.db.execute(
-            f"INSERT INTO kvbase(id, data {ins_k}) VALUES ('{key}', ? {ins_v}) "
-            + f"ON CONFLICT(id) DO UPDATE SET data=? {set_kv}",
-            (dt, dt),
-        )
+        if data is not None:
+            await self.db.execute(
+                f"INSERT INTO kvbase(id, data {ins_k}) VALUES ('{key}', ? {ins_v}) "
+                + f"ON CONFLICT(id) DO UPDATE SET data=? {set_kv}",
+                (dt, dt),
+            )
+        else:
+            await self.db.execute(f"UPDATE kvbase SET {set_kv[1:]} WHERE id=?", (key,))
 
     async def delete(self, key: KeyType):
         if not self.db:

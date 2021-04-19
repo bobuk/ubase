@@ -11,7 +11,7 @@ There's only one class `uBase` which implements methods `get`, `put`, and `keys`
 ```python-console
 >>> import ubase
 >>>
->>> DB = await ubase.init_db(":memory:", defaults={"test": "value", "another": ["strange", "value"]})
+>>> DB = await ubase.init_db(":memory:", defaults={"test": "value", "another": ["strange", "value"]}, features={"readed": False})
 >>> print(await DB.get("test", default="unknown"))
 value
 
@@ -21,9 +21,10 @@ not a value
 
 ```
 
-Method `init_db` has two main parameters:
+Method `init_db` has three main parameters:
  - `filename`: full database filename. You can use `:memory:` for an in-memory database, as always with sqlite3.
  - `defaults`: dictionary with default values which must be prefilled in newly created database. Note that default values will not be rewritten if keys were already created in the database before.
+ - `features`: additional 'flags' what can be used for matching and selection. Contains the dictionary of features and default values of that. Be carefull, currently only strings, integers and boolean values for values supported`
  - `ignore_existing`: don't raise exception, if database is already exists. True by default.
  
  `uBase.get` is more or less equivalent of `dict.get`, two arguments:
@@ -34,7 +35,18 @@ Method `init_db` has two main parameters:
  - `key`: string or integer
  - `value`: must be any serializable data type, like `int`, `str`, `dict` or `list` of these types accordingly.
  
+ Any other parameters used as features which need to be stored with this record. You can skip `value` and use it as `uBase.put(key, feature=value)` if you need only to update some features for existing value.
+ 
  `uBase.delete` is obviously to delete unneded data from database. The only argument is the `key`.
+ 
+ `ubase.features` is used to get features of existing key. The only argument is a `key` and returned value is a `uBaseFeature` i.e. simple facade for `dict` where name of features can be used as simple attribute.
+ 
+ ```python-console
+ >>> await DB.put("test", "value", readed = True)
+ >>> res = await DB.features("test")
+ >>> res.readed
+ True
+ ```
  
  Normally you will want slightly more structured keys, just use colon-separated strings, like "user:bobuk" for example.
  To add some sugar to these combinations we have `uBase.<prefix>.<method>`.
@@ -52,7 +64,7 @@ Method `init_db` has two main parameters:
  - `key`: the key you are going to compare with, must be a string or integer.
  - `mask`: used to limit the searched keys by prefix, for example "user:". By default `mask` is empty i.e. no musk applied.
  - `limit`: used to limit the number of answers like in SQL, default value is -1 i.e. no limits.
- 
+ - `bytimestamp`: sometimes you need to find all records in order as it arrives. Set `bytimestamp` to True for that.
  ```python-console
  >>> await DB.user.put(2010, 10)
  >>> await DB.user.put(2011, 8)
@@ -69,6 +81,7 @@ Method `init_db` has two main parameters:
  
  If you don't like the way I use async generators feel free to convert it to `list` or use them as normal generators with awesome [aioitertools](https://github.com/omnilib/aioitertools) module.
  
+ `uBase.select` is a special way to select only records with features set to some special value. For example if you have records where 'unread=True' for messages which is not readed by user.
  
 **Note:** all the examples should be tested with ipython, because it's a way easier to use async/await syntax with it. If you want to use it as a script, see the example below:
 
