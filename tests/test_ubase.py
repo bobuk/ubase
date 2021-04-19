@@ -133,6 +133,22 @@ async def test_base_keys_ts_no_ts():
 
 
 @pytest.mark.asyncio
+async def test_base_keys_features():
+    import ubase
+
+    db = await ubase.init_db(":memory:", features={"loaded": False, "version": 0})
+    for i in range(5):
+        await db.area.put(i, i, loaded=i % 2 == 0, version=2)
+    v = await db.area.get(3)
+    assert v == 3
+
+    features = await db.area.features(3)
+    assert features.loaded
+    assert features.version == 2
+    await db.close()
+
+
+@pytest.mark.asyncio
 async def test_base_andnot_del():
     import ubase
 

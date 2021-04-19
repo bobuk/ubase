@@ -31,6 +31,10 @@ class CantFoundKey(Exception):
     pass
 
 
+class FeatureNotFound(Exception):
+    pass
+
+
 class OP(Enum):
     GT = 1
     GTE = 2
@@ -39,6 +43,17 @@ class OP(Enum):
 
 
 _OP_LIST = {OP.GT: ">", OP.GTE: ">=", OP.LT: "<", OP.LTE: "<="}
+
+
+class uBaseFeature:
+    def __init__(self, ft: dict):
+        self.ft = ft
+
+    def __getattr__(self, key: KeyType):
+        try:
+            return self.ft[key]
+        except KeyError as k:
+            raise AttributeError(k)
 
 
 class uBaseProxy:
@@ -51,11 +66,14 @@ class uBaseProxy:
     ) -> Optional[ValueType]:
         return await self.base.get(f"{self.mask}:{key}", default)
 
-    async def put(self, key: KeyType, data: ValueType):
-        return await self.base.put(f"{self.mask}:{key}", data)
+    async def put(self, key: KeyType, data: ValueType, **args):
+        return await self.base.put(f"{self.mask}:{key}", data, **args)
 
     async def delete(self, key: KeyType):
         return await self.base.delete(f"{self.mask}:{key}")
+
+    async def features(self, key: KeyType) -> Optional[uBaseFeature]:
+        return await self.base.features(f"{self.mask}:{key}")
 
     def keys(
         self,
@@ -73,6 +91,7 @@ class uBase:
     def __init__(self, db: str):
         self.dbname = db
         self.db: aiosqlite.Connection
+        self.opt_features: Dict = {}
 
     def __getattr__(self, mask: str):
         try:
@@ -97,14 +116,48 @@ class uBase:
             else:
                 return default
 
-    async def put(self, key: KeyType, data: ValueType):
+    async def features(self, key: KeyType) -> Optional[uBaseFeature]:
+        async with self.db.execute(
+            "select "
+            + ",".join(self.opt_features.keys())
+            + f" from kvbase where id = '{key}'"
+        ) as cursor:
+            res = await cursor.fetchone()
+            output = {}
+            for n, (k, tp) in enumerate(self.opt_features.items()):
+                output[k] = type(tp)(res[n])
+            return uBaseFeature(output)
+        return None
+
+    async def put(self, key: KeyType, data: ValueType, **args):
         if not self.db:
             raise NotInitialized
         dt = json.dumps(data)
+        if args:
+            irq_k = []
+            irq_v = []
+            for k, v in args.items():
+                if k not in self.opt_features:
+                    raise FeatureNotFound(k)
+                irq_k.append(k)
+                ftype = type(self.opt_features[k])
+                if ftype == bool:
+                    irq_v.append("0" if not v else "1")
+                elif ftype == str:
+                    irq_v.append(f"'{v}'")
+                elif ftype == int:
+                    irq_v.append(str(int(v)))
+            ins_k = ", " + ", ".join(irq_k)
+            ins_v = ", " + ", ".join(irq_v)
+            set_kv = ""
+            for k, v in zip(irq_k, irq_v):
+                set_kv += f", {k}={v}"
+        else:
+            ins_k = ins_v = set_kv = ""
         await self.db.execute(
-            "INSERT INTO kvbase(id, data) VALUES (?,?) "
-            + "ON CONFLICT(id) DO UPDATE SET data=?",
-            (key, dt, dt),
+            f"INSERT INTO kvbase(id, data {ins_k}) VALUES ('{key}', ? {ins_v}) "
+            + f"ON CONFLICT(id) DO UPDATE SET data=? {set_kv}",
+            (dt, dt),
         )
 
     async def delete(self, key: KeyType):
@@ -163,15 +216,33 @@ class uBase:
 
 
 async def init_db(
-    name: str, defaults: Dict[KeyType, ValueType] = {}, ignore_existing=True
+    name: str,
+    defaults: Dict[KeyType, ValueType] = {},
+    ignore_existing=True,
+    features={},
 ) -> uBase:
     DB = uBase(name)
     DB.db = await aiosqlite.connect(name, isolation_level=None)
+    DB.opt_features = features
+    ftype = []
+    for k, v in features.items():
+        opt_type = type(v)
+        if opt_type == bool:
+            ftype.append(k + " BOOLEAN DEFAULT " + str(0 if v else 1))
+        elif opt_type == int:
+            ftype.append(k + " INTEGER DEFAULT " + str(v))
+        elif opt_type == str:
+            ftype.append(k + " varchar DEFAULT '" + str(v) + "'")
+    fres = ("," + (", ".join(ftype))) if ftype else ""
+
     try:
-        await DB.db.execute(
+        create_req = (
             "CREATE TABLE kvbase "
-            + "(id varchar(32) PRIMARY KEY UNIQUE, data json, ts int DEFAULT ((julianday('now') - 2440587.5)*86400000) NOT NULL)"
+            + "(id varchar(32) PRIMARY KEY UNIQUE, data json, ts int DEFAULT ((julianday('now') - 2440587.5)*86400000) NOT NULL "
+            + fres
+            + ")"
         )
+        await DB.db.execute(create_req)
     except aiosqlite.OperationalError:
         if not ignore_existing:
             raise CantCreateDatabase
