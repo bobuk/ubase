@@ -13,6 +13,7 @@ except ModuleNotFoundError:
 
 KeyType = Union[int, str]
 ValueType = Union[int, str, dict, list]
+FeatureType = Union[int, str, bool]
 
 
 class CantCreateDatabase(Exception):
@@ -49,7 +50,7 @@ class uBaseFeature:
     def __init__(self, ft: dict):
         self.ft = ft
 
-    def __getattr__(self, key: KeyType):
+    def __getattr__(self, key: KeyType) -> FeatureType:
         try:
             return self.ft[key]
         except KeyError as k:
@@ -119,13 +120,13 @@ class uBase:
     async def features(self, key: KeyType) -> Optional[uBaseFeature]:
         async with self.db.execute(
             "select "
-            + ",".join(self.opt_features.keys())
+            + ",".join(list(self.opt_features.keys()))
             + f" from kvbase where id = '{key}'"
         ) as cursor:
             res = await cursor.fetchone()
             output = {}
             for n, (k, tp) in enumerate(self.opt_features.items()):
-                output[k] = type(tp)(res[n])
+                output[str(k)] = type(tp)(res[n])  # type: ignore
             return uBaseFeature(output)
         return None
 
@@ -164,6 +165,36 @@ class uBase:
         if not self.db:
             raise NotInitialized
         await self.db.execute("DELETE FROM kvbase WHERE id=?", (key,))
+
+    async def select(
+        self,
+        feature: str,
+        target: FeatureType,
+        mask: Optional[KeyType] = "",
+        limit: int = -1,
+    ) -> AsyncGenerator[Tuple[KeyType, ValueType], None]:
+        if not self.db:
+            raise NotInitialized
+        if feature not in self.opt_features:
+            raise FeatureNotFound
+        ftype = type(self.opt_features[feature])
+        target_w: Union[str, int]
+        if ftype == bool:
+            target_w = 1 if target else 0
+        elif ftype == int:
+            if type(target) == int:
+                target_w = target
+            else:
+                raise FeatureNotFound
+        elif ftype == str:
+            target_w = f"'{target}'"
+        async with self.db.execute(
+            "SELECT id, data from kvbase where "
+            + f"id like '{mask}%' and {feature} = {target_w}  LIMIT {limit}"
+        ) as cursor:
+            async for key, item in cursor:
+                yield key, json.loads(item) if type(item) == "str" else item
+        return
 
     async def keys(
         self,

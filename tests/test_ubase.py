@@ -143,8 +143,14 @@ async def test_base_keys_features():
     assert v == 3
 
     features = await db.area.features(3)
-    assert features.loaded
+    assert not features.loaded
     assert features.version == 2
+
+    res = []
+    async for k, v in db.select("loaded", False, mask="area:"):
+        res.append(v)
+    assert res == [1, 3]
+
     await db.close()
 
 
