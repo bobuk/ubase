@@ -270,7 +270,7 @@ async def init_db(
     for k, v in features.items():
         opt_type = type(v)
         if opt_type == bool:
-            ftype.append(k + " BOOLEAN DEFAULT " + str(0 if v else 1))
+            ftype.append(k + " BOOLEAN DEFAULT " + str(1 if v else 0))
         elif opt_type == int:
             ftype.append(k + " INTEGER DEFAULT " + str(v))
         elif opt_type == str:
