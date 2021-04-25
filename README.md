@@ -6,7 +6,7 @@
 
 The main idea is simple: to use a preinstalled version of sqlite3 as key-value storage with a simple async interface.
 
-There's only one class `uBase` which implements methods `get`, `put`, and `keys` to get value by key, to put new value with key, and to scan the database for matching keys respectively. Because of python nature, you cannot use `uBase` initialization directly but with `init_db` method
+There's only one class, `uBase` that implements methods `get`, `put`, and `keys` to get value by key, to put new value with key, and to scan the database for matching keys, respectively. Because of python nature, you cannot use `uBase` initialization directly, but with `init_db` method
 
 ```python-console
 >>> import ubase
@@ -23,23 +23,23 @@ not a value
 
 Method `init_db` has three main parameters:
  - `filename`: full database filename. You can use `:memory:` for an in-memory database, as always with sqlite3.
- - `defaults`: dictionary with default values which must be prefilled in newly created database. Note that default values will not be rewritten if keys were already created in the database before.
- - `features`: additional 'flags' what can be used for matching and selection. Contains the dictionary of features and default values of that. Be carefull, currently only strings, integers and boolean values for values supported`
- - `ignore_existing`: don't raise exception, if database is already exists. True by default.
+ - `defaults`: dictionary with default values which developer must prefill in newly created database. Note that uBase will not rewrite default values if you already created keys in the database before.
+ - `features`: additional 'flags' that can be used for matching and selection. It contains the dictionary of features and default values of that. Be careful, only strings, integers, and boolean values for values currently supported.
+ - `ignore_existing`: don't raise an exception if the database already exists. True by default.
  
  `uBase.get` is more or less equivalent of `dict.get`, two arguments:
  - `key`: must be string or integer.
  - `default`: value which is returned if `key` is not found.
  
- `uBase.put` used to put any value to a key. If a key is not in the database it will be created otherwise the new value will be set to the key
+ `uBase.put` used to put any value to a key. If a key is not in the database, it will be created. Otherwise, the new value will be set to the key
  - `key`: string or integer
  - `value`: must be any serializable data type, like `int`, `str`, `dict` or `list` of these types accordingly.
  
- Any other parameters used as features which need to be stored with this record. You can skip `value` and use it as `uBase.put(key, feature=value)` if you need only to update some features for existing value.
+ Any other parameters are used as features, which need to be stored with this record. You can skip `value` and use it as `uBase.put(key, feature=value)` if you need only to update some features for the existing value.
  
- `uBase.delete` is obviously to delete unneded data from database. The only argument is the `key`.
+ `uBase.delete` is obviously to delete unneeded data from the database. The only argument is the `key`.
  
- `ubase.features` is used to get features of existing key. The only argument is a `key` and returned value is a `uBaseFeature` i.e. simple facade for `dict` where name of features can be used as simple attribute.
+ `ubase.features` is used to get features of the existing key. The only argument is a `key` and the returned value is a `uBaseFeature`, i.e., simple facade for `dict` where the name of features can be used as a simple attribute.
  
  ```python-console
  >>> await DB.put("test", "value", readed = True)
@@ -48,8 +48,7 @@ Method `init_db` has three main parameters:
  True
  ```
  
- Normally you will want slightly more structured keys, just use colon-separated strings, like "user:bobuk" for example.
- To add some sugar to these combinations we have `uBase.<prefix>.<method>`.
+ Usually, you will want slightly more structured keys. Just use colon-separated strings, like "user:bobuk" for example. To add some sugar to these combinations, we have `uBase.<prefix>.<method>`.
  
  ```python-console
  >>> await DB.user.put("umputun", {"firstname":"Eugeny", "lastname": "Doe"})
@@ -61,9 +60,9 @@ Method `init_db` has three main parameters:
  
  Mighty `uBase.keys` method is very complex and used to find all the items which is greater or lesser than given one. Returned async generator produce tuples contains both key and value, and please note what all items will be in ascending order if `op` oriented to the right (like greater or greater-or-equal sign) or descending order for opposite cases:
  - `op`: operation sign which is used to compare given key and keys in the database, for example ">" or "<=" or members of ubase.OP enum, like ubase.OP.GTE (for Greater or Equal)
- - `key`: the key you are going to compare with, must be a string or integer.
- - `mask`: used to limit the searched keys by prefix, for example "user:". By default `mask` is empty i.e. no musk applied.
- - `limit`: used to limit the number of answers like in SQL, default value is -1 i.e. no limits.
+ - `key`: the key you will compare with. It must be a string or integer.
+ - `mask`: used to limit the searched keys by prefix, for example, "user:". By default, `mask` is empty i.e. no musk applied.
+ - `limit`: used to limit the number of answers like in SQL, the default value is -1 i.e. no limits.
  - `bytimestamp`: sometimes you need to find all records in order as it arrives. Set `bytimestamp` to True for that.
  ```python-console
  >>> await DB.user.put(2010, 10)
@@ -79,15 +78,15 @@ Method `init_db` has three main parameters:
 2011
  ```
  
- If you don't like the way I use async generators feel free to convert it to `list` or use them as normal generators with awesome [aioitertools](https://github.com/omnilib/aioitertools) module.
+ If you don't like how I use async generators, feel free to convert it to `list` or use them as regular generators with awesome [aioitertools](https://github.com/omnilib/aioitertools) module.
  
- `uBase.select` is a special way to select only records with features set to some special value. For example if you have records where 'unread=True' for messages which is not readed by user.
+ `uBase.select` is a special way to select only records with features set to some specific value. For example, if you have records where 'unread=True' for messages are not readed by the user.
  
-**Note:** all the examples should be tested with ipython, because it's a way easier to use async/await syntax with it. If you want to use it as a script, see the example below:
+**Note:** all the examples should be tested with ipython, because it's easier to use async/await syntax with it. If you want to use it as a script, see the example below:
 
 ## Script example
 
-For more examples check out tests code at `tests/` folder
+For more examples, check out tests code at `tests/` folder
 
 ```python
 import asyncio
